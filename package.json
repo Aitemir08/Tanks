@@ -1,0 +1,27 @@
+{
+  "name": "tanks",
+  "version": "1.0.0",
+  "description": "Tanks is a simple multiplayer socket.io game",
+  "main": "tanks.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Aitemir08/Tanks.git"
+  },
+  "keywords": [
+    "tanks",
+    "multiplayer",
+    "socket.io"
+  ],
+  "author": "Usenov Aitemir",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Aitemir08/Tanks/issues"
+  },
+  "homepage": "https://github.com/Aitemir08/Tanks#readme",
+  "dependencies": {
+    "express": "^4.16.4"
+  }
+}
