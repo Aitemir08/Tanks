@@ -1,96 +1,143 @@
 <!DOCTYPE html>
 <html lang="en">
-    <head>
-        <meta charset="utf-8">
-        <title>Tanks</title>
-        <style>
-            body { margin: 0; overflow: hidden; }
-        </style>
-        <script src="/socket.io/socket.io.js"></script>
-        <script>
-            document.addEventListener('DOMContentLoaded', () => {
-                const canvas = document.getElementById('canvas')
-                const w = canvas.width  = window.innerWidth
-                const h = canvas.height = window.innerHeight
-                setup(canvas.getContext('2d'), w, h)
-                document.addEventListener('keydown', e => keyDown(e.key))
+
+<head>
+    <meta charset="utf-8">
+    <title>Tanks</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+        }
+
+        .tank-d {
+            transform: rotate(0deg)
+        }
+
+        .tank-s {
+            transform: rotate(90deg)
+        }
+
+        .tank-a {
+            transform: rotate(180deg)
+        }
+
+        .tank-w {
+            transform: rotate(270deg)
+        }
+    </style>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const canvas = document.getElementById('canvas')
+            const w = canvas.width = window.innerWidth
+            const h = canvas.height = window.innerHeight
+            setup(canvas.getContext('2d'), w, h)
+            document.addEventListener('keydown', e => keyDown(e.key))
+        })
+    </script>
+</head>
+
+<body>
+    <canvas id="canvas"></canvas>
+    <img id="tank-image" src="tank.png" alt="tank" style="display: none">
+    <img id="bullet-image" src="bullet.png" alt="tank" style="display: none">
+    <script>
+        let socket
+
+        const fieldWidth = 20
+        const fieldHeight = 20
+
+        let cellSize
+        let fieldScreenWidth, fieldScreenHeight
+        let fieldCenterShiftX, fieldCenterShiftY
+
+        let gameObjects = {}
+        let tankImage
+        let bulletImage
+        const tankDirections = ['tank-d', 'tank-s', 'tank-a', 'tank-w']
+
+        function setup(ctx, w, h) {
+            socket = io()
+            socket.on('upd', msg => {
+                gameObjects = Object.assign({}, gameObjects, msg)
             })
-        </script>
-    </head>
-    <body>
-        <canvas id="canvas"></canvas>
-        <script>
-            let socket
+            socket.on('dstr', msg => {
+                for (let i = 0; i < msg.length; ++i) {
+                    delete gameObjects[msg[i]]
+                }
+            })
 
-            const fieldWidth = 20
-            const fieldHeight = 20
+            cellSize = Math.min(w / fieldWidth, h / fieldHeight)
+            fieldScreenWidth = fieldWidth * cellSize
+            fieldScreenHeight = fieldHeight * cellSize
+            fieldCenterShiftX = (w - fieldScreenWidth) / 2
+            fieldCenterShiftY = (h - fieldScreenHeight) / 2
 
-            let cellSize
-            let fieldScreenWidth, fieldScreenHeight
-            let fieldCenterShiftX, fieldCenterShiftY
+            tankImage = document.getElementById('tank-image')
+            bulletImage = document.getElementById('bullet-image')
 
-            let gameObjects = { }
+            window.requestAnimationFrame(timestamp => draw(ctx, w, h, timestamp));
+        }
 
-            function setup(ctx, w, h) {
-                socket = io()
-                socket.on('upd', msg => {
-                    gameObjects = Object.assign({}, gameObjects, msg)
-                })
-                socket.on('dstr', msg => {
-                    for (let i = 0; i < msg.length; ++i) {
-                       delete gameObjects[msg[i]] 
-                    }
-                })
+        function draw(ctx, w, h, timestamp) {
+            ctx.fillStyle = 'black'
+            ctx.beginPath()
+            ctx.rect(0, 0, w, h)
+            ctx.fill()
 
-                cellSize = Math.min(w / fieldWidth, h / fieldHeight)
-                fieldScreenWidth = fieldWidth * cellSize
-                fieldScreenHeight = fieldHeight * cellSize
-                fieldCenterShiftX = (w - fieldScreenWidth) / 2
-                fieldCenterShiftY = (h - fieldScreenHeight) / 2
-
-                window.requestAnimationFrame(timestamp => draw(ctx, w, h, timestamp));
-            }
-
-            function draw(ctx, w, h, timestamp) {
-                ctx.fillStyle = 'black'
-                ctx.beginPath()
-                ctx.rect(0, 0, w, h)
-                ctx.fill()
-                
-                for (let y = 0; y < fieldWidth; ++y) {
-                    for (let x = 0; x < fieldWidth; ++x) {
-                        const screenX = fieldCenterShiftX + x * cellSize
-                        const screenY = fieldCenterShiftY + y * cellSize
-                        ctx.fillStyle = 'grey'
-                        ctx.beginPath()
-                        ctx.rect(screenX + 1, screenY + 1, cellSize - 2, cellSize - 2)
-                        ctx.fill()
-                    }
-                } 
-
-                for (const [_, gameObject] of Object.entries(gameObjects)) {
-                    const screenX = fieldCenterShiftX + gameObject.x * cellSize
-                    const screenY = fieldCenterShiftY + gameObject.y * cellSize
-                    ctx.fillStyle = gameObject.c
+            for (let y = 0; y < fieldWidth; ++y) {
+                for (let x = 0; x < fieldWidth; ++x) {
+                    const screenX = fieldCenterShiftX + x * cellSize
+                    const screenY = fieldCenterShiftY + y * cellSize
+                    ctx.fillStyle = 'grey'
                     ctx.beginPath()
                     ctx.rect(screenX + 1, screenY + 1, cellSize - 2, cellSize - 2)
                     ctx.fill()
                 }
-
-                window.requestAnimationFrame(timestamp => draw(ctx, w, h, timestamp));
             }
 
-            function keyDown(key) {
-                switch (key) {
-                    case 'w':
-                    case 'a':
-                    case 's':
-                    case 'd':
-                    case ' ':
-                        socket.emit('cmd', key);
-                        break
+            for (const [_, gameObject] of Object.entries(gameObjects)) {
+                const screenX = fieldCenterShiftX + gameObject.x * cellSize
+                const screenY = fieldCenterShiftY + gameObject.y * cellSize
+
+                if (gameObject.t == 't') {
+                    tankImage.classList.remove(...tankDirections)
+                    if (gameObject.dx == 0 && gameObject.dy == -1) {
+                        tankImage.classList.add('tank-w')
+                    } else if (gameObject.dx == 1 && gameObject.dy == 0) {
+                        tankImage.classList.add('tank-d')
+                    } else if (gameObject.dx == 0 && gameObject.dy == 1) {
+                        tankImage.classList.add('tank-s')
+                    } else {
+                        tankImage.classList.add('tank-a')
+                    }
+                    ctx.drawImage(tankImage, screenX + 1, screenY + 1, cellSize - 2, cellSize - 2)
+                } else {
+                    ctx.drawImage(bulletImage, screenX + 1, screenY + 1, cellSize - 2, cellSize - 2)
                 }
+
+                // ctx.fillStyle = gameObject.c
+                // ctx.beginPath()
+                // ctx.rect(screenX + 1, screenY + 1, cellSize - 2, cellSize - 2)
+                // ctx.fill()
             }
-        </script>
-    </body>
+
+            window.requestAnimationFrame(timestamp => draw(ctx, w, h, timestamp));
+        }
+
+        function keyDown(key) {
+            switch (key) {
+                case 'w':
+                case 'a':
+                case 's':
+                case 'd':
+                case ' ':
+                    socket.emit('cmd', key);
+                    break
+            }
+        }
+    </script>
+</body>
+
 </html>
